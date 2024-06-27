@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace Polymorphism
 {
@@ -9,79 +10,93 @@ namespace Polymorphism
         public Form1()
         {
             InitializeComponent();
+            chart1.Series.Add("sin(a*x)/x");
+            chart1.Series.Add("a*x*|sin(x)|");
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            // Создаем тестовые уравнения
-            Equation sineEquation = new SineEquation(2.0);
-            Equation absoluteSineEquation = new AbsoluteSineEquation(3.0);
-
-            // Рисуем графики
-            DrawFunction(-10.0, 10.0, sineEquation, panel1);
-            DrawFunction(-10.0, 10.0, absoluteSineEquation, panel2);
         }
 
-        private void DrawFunction(double x1, double x2, Equation equation, Panel panel)
+        // Абстрактный класс Equation
+        public abstract class Equation
         {
-            // Создаем bitmap для рисования
-            Bitmap bitmap = new Bitmap(panel.Width, panel.Height);
-            Graphics g = Graphics.FromImage(bitmap);
+            public abstract double Evaluate(double x);
+        }
 
-            // Настраиваем систему координат
-            g.TranslateTransform(panel.Width / 2, panel.Height / 2);
-            g.ScaleTransform(panel.Width / 20.0f, -panel.Height / 20.0f);
+        // Производный класс SineEquation
+        public class SineEquation : Equation
+        {
+            private double a;
 
-            // Рисуем график
-            g.Clear(Color.White);
-            g.DrawLine(Pens.Black, (float)x1, 0, (float)x2, 0);
-            g.DrawLine(Pens.Black, 0, (float)x1, 0, (float)x2);
-
-            for (double x = x1; x <= x2; x += 0.1)
+            public SineEquation(double a)
             {
-                float y = (float)equation.Evaluate(x);
-                g.DrawLine(Pens.Black, (float)x, 0, (float)x, y);
+                this.a = a;
             }
 
-            // Отображаем bitmap на панели
-            panel.CreateGraphics().DrawImage(bitmap, 0, 0);
-        }
-    }
-
-    // Абстрактный класс Equation
-    public abstract class Equation
-    {
-        public abstract double Evaluate(double x);
-    }
-
-    // Производный класс для уравнения sin(a*x)/x
-    public class SineEquation : Equation
-    {
-        private readonly double a;
-        public SineEquation(double a)
-        {
-            this.a = a;
-        }
-        public override double Evaluate(double x)
-        {
-            if (x == 0)
-                return 0;
-            else
+            public override double Evaluate(double x)
+            {
                 return Math.Sin(a * x) / x;
+            }
         }
-    }
 
-    // Производный класс для уравнения a*x*|sin(x)|
-    public class AbsoluteSineEquation : Equation
-    {
-        private readonly double a;
-        public AbsoluteSineEquation(double a)
+        // Производный класс ModulusSineEquation
+        public class ModulusSineEquation : Equation
         {
-            this.a = a;
+            private double a;
+
+            public ModulusSineEquation(double a)
+            {
+                this.a = a;
+            }
+
+            public override double Evaluate(double x)
+            {
+                return a * x * Math.Abs(Math.Sin(x));
+            }
         }
-        public override double Evaluate(double x)
+
+        // Использование классов
+        private void button1_Click_1(object sender, EventArgs e)
         {
-            return a * x * Math.Abs(Math.Sin(x));
+            double Xmin = double.Parse(textBoxXmin.Text);
+            double Xmax = double.Parse(textBoxXmax.Text);
+            double Step = double.Parse(textBoxStep.Text);
+
+            // Количество точек графика
+            int count = (int)Math.Ceiling((Xmax - Xmin) / Step) + 1;
+
+            // Массив значений X – общий для обоих графиков
+            double[] x = new double[count];
+
+            // Два массива Y – по одному для каждого графика
+            double[] y1 = new double[count];
+            double[] y2 = new double[count];
+
+            // Создаем объекты классов уравнений
+            Equation sineEquation = new SineEquation(2.0);
+            Equation modulusSineEquation = new ModulusSineEquation(3.0);
+
+            // Расчитываем точки для графиков функции
+            for (int i = 0; i < count; i++)
+            {
+                // Вычисляем значение X
+                x[i] = Xmin + Step * i;
+
+                // Вычисляем значения Y для каждого графика
+                y1[i] = sineEquation.Evaluate(x[i]);
+                y2[i] = modulusSineEquation.Evaluate(x[i]);
+            }
+
+            // Отрисовываем графики
+            chart1.ChartAreas[0].AxisX.Minimum = Xmin;
+            chart1.ChartAreas[0].AxisX.Maximum = Xmax;
+            chart1.ChartAreas[0].AxisX.MajorGrid.Interval = Step;
+            chart1.Series[0].ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Spline;
+            chart1.Series[1].ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Spline;
+            chart1.Series[0].Points.DataBindXY(x, y1);
+            chart1.Series[1].Points.DataBindXY(x, y2);
         }
+
     }
 }
